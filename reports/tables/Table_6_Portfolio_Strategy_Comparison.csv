@@ -1,4 +1,4 @@
-Portfolio Strategy,Expected Return (%),Risk (%),Sharpe Ratio
-Equal Weight,28.92,18.41,1.57
-Minimum Variance,16.69,13.28,1.26
+Portfolio,Expected Return (%),Risk (%),Sharpe Ratio
 Maximum Sharpe,41.66,18.83,2.21
+Minimum Variance,16.69,13.28,1.26
+Equal Weight,28.92,18.41,1.57

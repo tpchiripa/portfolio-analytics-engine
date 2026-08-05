@@ -11,13 +11,30 @@ from scipy.optimize import minimize
 
 from src.optimization.mean_variance import portfolio_performance
 
-def minimum_variance_portfolio(
-    target_return,
-    expected_returns,
-    covariance_matrix,
-):
+
+def minimum_variance_target_return(
+    target_return: float,
+    expected_returns: pd.Series,
+    covariance_matrix: pd.DataFrame,
+) -> np.ndarray:
     """
-    Compute the minimum variance portfolio for a target return.
+    Compute the minimum variance portfolio for a specified target return.
+
+    Parameters
+    ----------
+    target_return : float
+        Desired annualized portfolio return.
+
+    expected_returns : pd.Series
+        Annualized expected asset returns.
+
+    covariance_matrix : pd.DataFrame
+        Annualized covariance matrix.
+
+    Returns
+    -------
+    np.ndarray
+        Optimal portfolio weights.
     """
 
     n_assets = len(expected_returns)
@@ -33,17 +50,23 @@ def minimum_variance_portfolio(
         },
         {
             "type": "eq",
-            "fun": lambda w:
-                np.dot(w, expected_returns) - target_return,
+            "fun": lambda w: np.dot(w, expected_returns) - target_return,
         },
     )
 
     def portfolio_variance(weights):
-        return portfolio_performance(
-            weights,
-            expected_returns,
-            covariance_matrix,
-        )[1] ** 2
+        """
+        Portfolio variance objective function.
+        """
+
+        return (
+            portfolio_performance(
+                weights,
+                expected_returns,
+                covariance_matrix,
+            )[1]
+            ** 2
+        )
 
     result = minimize(
         portfolio_variance,
@@ -53,15 +76,37 @@ def minimum_variance_portfolio(
         constraints=constraints,
     )
 
+    if not result.success:
+        raise ValueError(
+            f"Optimization failed: {result.message}"
+        )
+
     return result.x
 
+
 def efficient_frontier(
-    expected_returns,
-    covariance_matrix,
-    points=50,
-):
+    expected_returns: pd.Series,
+    covariance_matrix: pd.DataFrame,
+    points: int = 150,
+) -> pd.DataFrame:
     """
-    Generate Efficient Frontier.
+    Generate the Markowitz Efficient Frontier.
+
+    Parameters
+    ----------
+    expected_returns : pd.Series
+        Annualized expected returns.
+
+    covariance_matrix : pd.DataFrame
+        Annualized covariance matrix.
+
+    points : int, default=150
+        Number of portfolios along the frontier.
+
+    Returns
+    -------
+    pd.DataFrame
+        Efficient frontier statistics.
     """
 
     target_returns = np.linspace(
@@ -74,25 +119,36 @@ def efficient_frontier(
 
     for target in target_returns:
 
-        weights = minimum_variance_portfolio(
+        weights = minimum_variance_target_return(
             target,
             expected_returns,
             covariance_matrix,
         )
 
-        portfolio_return, portfolio_risk = (
-            portfolio_performance(
-                weights,
-                expected_returns,
-                covariance_matrix,
-            )
+        portfolio_return, portfolio_risk = portfolio_performance(
+            weights,
+            expected_returns,
+            covariance_matrix,
         )
 
         frontier.append(
             {
-                "Return": portfolio_return * 100,
-                "Risk": portfolio_risk * 100,
+                "Target Return (%)": round(
+                    target * 100,
+                    2,
+                ),
+                "Expected Return (%)": round(
+                    portfolio_return * 100,
+                    2,
+                ),
+                "Annualized Volatility (%)": round(
+                    portfolio_risk * 100,
+                    2,
+                ),
+                "Weights": weights,
             }
         )
 
-    return pd.DataFrame(frontier)
+    frontier = pd.DataFrame(frontier)
+
+    return frontier
